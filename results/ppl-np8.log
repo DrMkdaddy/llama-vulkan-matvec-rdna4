@@ -1,0 +1,14 @@
+=== PPL Q4_K_M (wikitext-2 test, ctx 512, 24 chunks) ===
+[1]14.7718,[2]21.2089,[3]21.7271,[4]22.2460,[5]21.8550,[6]22.7872,[7]23.1394,[8]25.4776,[9]27.3080,[10]28.3330,[11]28.7099,[12]29.4444,[13]30.5377,[14]29.2381,[15]28.6481,[16]29.3558,[17]26.8744,[18]27.2036,[19]26.3378,[20]26.9590,[21]26.3584,[22]26.4544,[23]25.0934,[24]23.6013,
+0.06.775.996 I Final estimate: PPL = 23.6013 +/- 1.10799
+
+=== PPL IQ4_XS (requantized from Q4_K_M) ===
+[1]15.2208,[2]21.8956,[3]22.5979,[4]22.9889,[5]22.4003,[6]23.4641,[7]23.7661,[8]26.2200,[9]28.1218,[10]29.1886,[11]29.5643,[12]30.1847,[13]31.2764,[14]30.0654,[15]29.4222,[16]30.1348,[17]27.5478,[18]27.8637,[19]27.0339,[20]27.7048,[21]27.0943,[22]27.2196,[23]25.7834,[24]24.2437,
+0.06.688.383 I Final estimate: PPL = 24.2437 +/- 1.13768
+
+=== np8 aggregate, IQ4_XS, f16 KV ===
+{"run":3,"concurrent":8,"prompt_tps":389.4,"decode_tps":180.9,"aggregate_tps":180.2,"predicted_n":2048,"draft_n":0,"draft_accepted":0,"accept_rate":null,"wall_ms":11368}
+{"summary":true,"runs":3,"concurrent":8,"decode_tps_avg":176.1,"decode_tps_max":182.1,"aggregate_tps_avg":174.1,"accept_rate_pct":null,"draft_n_total":0}
+=== np8 aggregate, Q4_K_M, f16 KV (reference) ===
+{"run":3,"concurrent":8,"prompt_tps":398.1,"decode_tps":423.3,"aggregate_tps":414.9,"predicted_n":2048,"draft_n":0,"draft_accepted":0,"accept_rate":null,"wall_ms":4936}
+{"summary":true,"runs":3,"concurrent":8,"decode_tps_avg":428.4,"decode_tps_max":431.3,"aggregate_tps_avg":417,"accept_rate_pct":null,"draft_n_total":0}

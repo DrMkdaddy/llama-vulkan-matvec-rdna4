@@ -1,0 +1,82 @@
+=== PERF TABLE, 1 column (last decode step) ===
+MUL_MAT_VEC q4_K m=18944 n=1 k=3584: 56 x 64.102 us = 3589.76 us (2118.03 GFLOPS/s)
+MUL_MAT_VEC q4_K m=3584 n=1 k=3584: 1 x 15.24 us = 15.24 us (1685.47 GFLOPS/s)
+MUL_MAT_VEC q6_K m=152064 n=1 k=3584: 1 x 718.76 us = 718.76 us (1516.28 GFLOPS/s)
+RMS_NORM_MUL RMS_NORM(3584,1,1,1): 57 x 5.185 us = 295.56 us
+ROPE: 28 x 3.274 us = 91.68 us
+ROPE_VIEW_SET_ROWS ROPE: 28 x 3.638 us = 101.88 us
+SET_ROWS: 28 x 3.26 us = 91.28 us
+Total time: 8487.12 us.
+ADD: 1 x 3.24 us = 3.24 us
+FLASH_ATTN_EXT dst(128,28,1,1),  q(128,1,28,1),  k(128,256,4,1),  v(128,256,4,1),  m(256,1,1,1): 28 x 7.424 us = 207.88 us (494.326 GFLOPS/s)
+GET_ROWS: 2 x 3.3 us = 6.6 us
+GLU: 28 x 2.624 us = 73.48 us
+MUL_MAT_ADD MUL_MAT_VEC q4_K m=3584 n=1 k=18944: 14 x 68.94 us = 965.16 us (1969.64 GFLOPS/s)
+MUL_MAT_ADD MUL_MAT_VEC q4_K m=3584 n=1 k=3584: 55 x 14.994 us = 824.72 us (1713.02 GFLOPS/s)
+MUL_MAT_ADD MUL_MAT_VEC q4_K m=512 n=1 k=3584: 42 x 3.49 us = 146.6 us (1051.29 GFLOPS/s)
+MUL_MAT_ADD MUL_MAT_VEC q6_K m=3584 n=1 k=18944: 14 x 96.277 us = 1347.88 us (1410.38 GFLOPS/s)
+MUL_MAT_ADD MUL_MAT_VEC q6_K m=512 n=1 k=3584: 14 x 5.348 us = 74.88 us (686.072 GFLOPS/s)
+MUL_MAT_VEC q4_K m=18944 n=1 k=3584: 56 x 65.315 us = 3657.68 us (2078.7 GFLOPS/s)
+MUL_MAT_VEC q4_K m=3584 n=1 k=3584: 1 x 15.28 us = 15.28 us (1681.06 GFLOPS/s)
+MUL_MAT_VEC q6_K m=152064 n=1 k=3584: 1 x 719 us = 719 us (1515.78 GFLOPS/s)
+RMS_NORM_MUL RMS_NORM(3584,1,1,1): 57 x 5.39 us = 307.24 us
+ROPE: 28 x 3.398 us = 95.16 us
+ROPE_VIEW_SET_ROWS ROPE: 28 x 3.425 us = 95.92 us
+SET_ROWS: 28 x 3.18 us = 89.04 us
+Total time: 8629.76 us.
+=== BENCH TABLE ===
+--- Q4_K_M kv=f16 d=0
+| model                          |       size |     params | backend    | ngl |  fa |            test |                  t/s |
+| ------------------------------ | ---------: | ---------: | ---------- | --: | --: | --------------: | -------------------: |
+| qwen2 7B Q4_K - Medium         |   4.36 GiB |     7.62 B | Vulkan     |  99 |   1 |           tg128 |        116.48 ± 0.33 |
+build: 60b06ab (1)
+--- Q4_K_M kv=f16 d=4096
+| model                          |       size |     params | backend    | ngl |  fa |            test |                  t/s |
+| ------------------------------ | ---------: | ---------: | ---------- | --: | --: | --------------: | -------------------: |
+| qwen2 7B Q4_K - Medium         |   4.36 GiB |     7.62 B | Vulkan     |  99 |   1 |   tg128 @ d4096 |        107.62 ± 6.16 |
+build: 60b06ab (1)
+--- Q4_K_M kv=q8_0 d=0
+| model                          |       size |     params | backend    | ngl | type_k | type_v |  fa |            test |                  t/s |
+| ------------------------------ | ---------: | ---------: | ---------- | --: | -----: | -----: | --: | --------------: | -------------------: |
+| qwen2 7B Q4_K - Medium         |   4.36 GiB |     7.62 B | Vulkan     |  99 |   q8_0 |   q8_0 |   1 |           tg128 |        112.92 ± 1.18 |
+build: 60b06ab (1)
+--- Q4_K_M kv=q8_0 d=4096
+| model                          |       size |     params | backend    | ngl | type_k | type_v |  fa |            test |                  t/s |
+| ------------------------------ | ---------: | ---------: | ---------- | --: | -----: | -----: | --: | --------------: | -------------------: |
+| qwen2 7B Q4_K - Medium         |   4.36 GiB |     7.62 B | Vulkan     |  99 |   q8_0 |   q8_0 |   1 |   tg128 @ d4096 |        108.19 ± 0.39 |
+build: 60b06ab (1)
+--- IQ4_XS kv=f16 d=0
+| model                          |       size |     params | backend    | ngl |  fa |            test |                  t/s |
+| ------------------------------ | ---------: | ---------: | ---------- | --: | --: | --------------: | -------------------: |
+| qwen2 7B IQ4_XS - 4.25 bpw     |   3.95 GiB |     7.62 B | Vulkan     |  99 |   1 |           tg128 |        126.84 ± 1.70 |
+build: 60b06ab (1)
+--- IQ4_XS kv=f16 d=4096
+| model                          |       size |     params | backend    | ngl |  fa |            test |                  t/s |
+| ------------------------------ | ---------: | ---------: | ---------- | --: | --: | --------------: | -------------------: |
+| qwen2 7B IQ4_XS - 4.25 bpw     |   3.95 GiB |     7.62 B | Vulkan     |  99 |   1 |   tg128 @ d4096 |        119.89 ± 0.26 |
+build: 60b06ab (1)
+--- IQ4_XS kv=q8_0 d=0
+| model                          |       size |     params | backend    | ngl | type_k | type_v |  fa |            test |                  t/s |
+| ------------------------------ | ---------: | ---------: | ---------- | --: | -----: | -----: | --: | --------------: | -------------------: |
+| qwen2 7B IQ4_XS - 4.25 bpw     |   3.95 GiB |     7.62 B | Vulkan     |  99 |   q8_0 |   q8_0 |   1 |           tg128 |        123.42 ± 0.31 |
+build: 60b06ab (1)
+--- IQ4_XS kv=q8_0 d=4096
+| model                          |       size |     params | backend    | ngl | type_k | type_v |  fa |            test |                  t/s |
+| ------------------------------ | ---------: | ---------: | ---------- | --: | -----: | -----: | --: | --------------: | -------------------: |
+| qwen2 7B IQ4_XS - 4.25 bpw     |   3.95 GiB |     7.62 B | Vulkan     |  99 |   q8_0 |   q8_0 |   1 |   tg128 @ d4096 |        116.53 ± 0.08 |
+build: 60b06ab (1)
+=== PPL (wikitext-2 test, ctx 512, 24 chunks) ===
+--- Q4_K_M
+
+usage:
+-f,    --file FNAME                     a file containing the prompt (default: none)
+
+
+to show complete usage, run with -h
+--- IQ4_XS
+
+usage:
+-f,    --file FNAME                     a file containing the prompt (default: none)
+
+
+to show complete usage, run with -h

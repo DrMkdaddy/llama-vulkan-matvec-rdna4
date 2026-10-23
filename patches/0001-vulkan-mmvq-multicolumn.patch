@@ -1,0 +1,444 @@
+diff --git a/ggml/src/ggml-vulkan/ggml-vulkan.cpp b/ggml/src/ggml-vulkan/ggml-vulkan.cpp
+index da0e24f..1de89e2 100644
+--- a/ggml/src/ggml-vulkan/ggml-vulkan.cpp
++++ b/ggml/src/ggml-vulkan/ggml-vulkan.cpp
+@@ -2687,6 +2687,9 @@ void ggml_vk_load_shaders(vk_device& device, vk_pipeline requested) {
+     // RDNA3: above four columns, static 4 rows for all types bench faster than the default
+     const bool is_rdna3 = device->vendor_id == VK_VENDOR_ID_AMD && device->architecture == AMD_RDNA3;
+     auto const &rm_int_n = [&](uint32_t rows, uint32_t i) { return (is_rdna3 && i >= 4) ? 4u : rows; };
++    // Wider row blocking pays off for the 4-byte K-quant layouts once there are enough columns
++    // to amortize the activation loads.
++    auto const &rm_int_n_wide = [&](uint32_t rows, uint32_t i) { return (is_rdna3 && i >= 4) ? 8u : rows; };
+     // RDNA3: Static 4 rows for all types bench faster than the default
+     auto const &rm_id = [&](uint32_t rows) { return is_rdna3 ? 4u : rows; };
+     uint32_t rm_iq = 2 * rm_kq;
+@@ -2802,8 +2805,8 @@ void ggml_vk_load_shaders(vk_device& device, vk_pipeline requested) {
+ 
+                 ggml_vk_create_pipeline(device, device->pipeline_dequant_mul_mat_vec_q8_1_f32[w][GGML_TYPE_Q2_K][i], "mul_mat_vec_q2_k_q8_1_f32", arr_dmmv_q2_k_q8_1_f32_len[reduc], arr_dmmv_q2_k_q8_1_f32_data[reduc], "main", mul_mat_vec_num_bindings, sizeof(vk_mat_vec_push_constants), {rm_int_n(2*rm_kq_int, i), 1, 1}, {wg_size_subgroup_int, rm_int_n(2*rm_kq_int, i), i+1}, 1, true, use_subgroups, subgroup_size_int);
+                 ggml_vk_create_pipeline(device, device->pipeline_dequant_mul_mat_vec_q8_1_f32[w][GGML_TYPE_Q3_K][i], "mul_mat_vec_q3_k_q8_1_f32", arr_dmmv_q3_k_q8_1_f32_len[reduc], arr_dmmv_q3_k_q8_1_f32_data[reduc], "main", mul_mat_vec_num_bindings, sizeof(vk_mat_vec_push_constants), {rm_int_n(1*rm_kq_int, i), 1, 1}, {wg_size_subgroup_int, rm_int_n(1*rm_kq_int, i), i+1}, 1, true, use_subgroups, subgroup_size_int);
+-                ggml_vk_create_pipeline(device, device->pipeline_dequant_mul_mat_vec_q8_1_f32[w][GGML_TYPE_Q4_K][i], "mul_mat_vec_q4_k_q8_1_f32", arr_dmmv_q4_k_q8_1_f32_len[reduc], arr_dmmv_q4_k_q8_1_f32_data[reduc], "main", mul_mat_vec_num_bindings, sizeof(vk_mat_vec_push_constants), {rm_int_n(1*rm_kq_int, i), 1, 1}, {wg_size_subgroup_int, rm_int_n(1*rm_kq_int, i), i+1}, 1, true, use_subgroups, subgroup_size_int);
+-                ggml_vk_create_pipeline(device, device->pipeline_dequant_mul_mat_vec_q8_1_f32[w][GGML_TYPE_Q5_K][i], "mul_mat_vec_q5_k_q8_1_f32", arr_dmmv_q5_k_q8_1_f32_len[reduc], arr_dmmv_q5_k_q8_1_f32_data[reduc], "main", mul_mat_vec_num_bindings, sizeof(vk_mat_vec_push_constants), {rm_int_n(1*rm_kq_int, i), 1, 1}, {wg_size_subgroup_int, rm_int_n(1*rm_kq_int, i), i+1}, 1, true, use_subgroups, subgroup_size_int);
++                ggml_vk_create_pipeline(device, device->pipeline_dequant_mul_mat_vec_q8_1_f32[w][GGML_TYPE_Q4_K][i], "mul_mat_vec_q4_k_q8_1_f32", arr_dmmv_q4_k_q8_1_f32_len[reduc], arr_dmmv_q4_k_q8_1_f32_data[reduc], "main", mul_mat_vec_num_bindings, sizeof(vk_mat_vec_push_constants), {rm_int_n_wide(1*rm_kq_int, i), 1, 1}, {wg_size_subgroup_int, rm_int_n_wide(1*rm_kq_int, i), i+1}, 1, true, use_subgroups, subgroup_size_int);
++                ggml_vk_create_pipeline(device, device->pipeline_dequant_mul_mat_vec_q8_1_f32[w][GGML_TYPE_Q5_K][i], "mul_mat_vec_q5_k_q8_1_f32", arr_dmmv_q5_k_q8_1_f32_len[reduc], arr_dmmv_q5_k_q8_1_f32_data[reduc], "main", mul_mat_vec_num_bindings, sizeof(vk_mat_vec_push_constants), {rm_int_n_wide(1*rm_kq_int, i), 1, 1}, {wg_size_subgroup_int, rm_int_n_wide(1*rm_kq_int, i), i+1}, 1, true, use_subgroups, subgroup_size_int);
+                 ggml_vk_create_pipeline(device, device->pipeline_dequant_mul_mat_vec_q8_1_f32[w][GGML_TYPE_Q6_K][i], "mul_mat_vec_q6_k_q8_1_f32", arr_dmmv_q6_k_q8_1_f32_len[reduc], arr_dmmv_q6_k_q8_1_f32_data[reduc], "main", mul_mat_vec_num_bindings, sizeof(vk_mat_vec_push_constants), {rm_int_n(1*rm_kq_int, i), 1, 1}, {wg_size_subgroup_int, rm_int_n(1*rm_kq_int, i), i+1}, 1, true, use_subgroups, subgroup_size_int);
+ 
+                 ggml_vk_create_pipeline(device, device->pipeline_dequant_mul_mat_vec_q8_1_f32[w][GGML_TYPE_IQ1_S][i], "mul_mat_vec_iq1_s_q8_1_f32", arr_dmmv_iq1_s_q8_1_f32_len[reduc], arr_dmmv_iq1_s_q8_1_f32_data[reduc], "main", mul_mat_vec_num_bindings, sizeof(vk_mat_vec_push_constants), {1*rm_iq_int(i), 1, 1}, {wg_size_subgroup_int, 1*rm_iq_int(i), i+1}, 1, true, use_subgroups, subgroup_size_int);
+diff --git a/ggml/src/ggml-vulkan/vulkan-shaders/mul_mat_vecq.comp b/ggml/src/ggml-vulkan/vulkan-shaders/mul_mat_vecq.comp
+index 18d441e..ac18c13 100644
+--- a/ggml/src/ggml-vulkan/vulkan-shaders/mul_mat_vecq.comp
++++ b/ggml/src/ggml-vulkan/vulkan-shaders/mul_mat_vecq.comp
+@@ -29,6 +29,15 @@ vec2 cache_b_ds;
+ #include "mul_mat_vecq_funcs.glsl"
+ 
+ void iter(inout FLOAT_TYPE temp[NUM_COLS][NUM_ROWS], const uint first_row, const uint num_rows, const uint col, const uint b_qs_idx) {
++    // Load and unpack the weight block once per row, then reuse it for all columns.
++    a_tile a_tiles[NUM_ROWS];
++    uint ibi = first_row*p.ncols;
++    [[unroll]] for (uint n = 0; n < num_rows; ++n) {
++        const uint a_block_idx = (ibi + col)/QUANT_K_Q8_1 + a_offset;
++        ibi += p.ncols;
++        a_tiles[n] = load_a_tile(a_block_idx, b_qs_idx);
++    }
++
+     [[unroll]] for (uint j = 0; j < NUM_COLS; ++j) {
+         // Preload data_b block
+         const uint b_block_idx = (j*p.batch_stride_b + col) / QUANT_K_Q8_1 + b_offset;
+@@ -63,12 +72,8 @@ void iter(inout FLOAT_TYPE temp[NUM_COLS][NUM_ROWS], const uint first_row, const
+ #endif
+ #endif
+ 
+-        uint ibi = first_row*p.ncols;
+         [[unroll]] for (uint n = 0; n < num_rows; ++n) {
+-            const uint a_block_idx = (ibi + col)/QUANT_K_Q8_1 + a_offset;
+-            ibi += p.ncols;
+-
+-            temp[j][n] += mmvq_dot_product(a_block_idx, b_qs_idx);
++            temp[j][n] += dot_a_tile(a_tiles[n]);
+         }
+     }
+ }
+@@ -96,27 +101,37 @@ void compute_outputs(const uint32_t first_row, const uint32_t num_rows) {
+ 
+     const uint b_qs_idx = tid % (32 / K_PER_ITER);
+     uint col = tid * K_PER_ITER;
+-    while (num_iters >= 4) {
+-        // Manually partially unroll the loop
+-        [[unroll]] for (uint k = 0; k < 4; ++k) {
++    if (NUM_ROWS >= 8) {
++        // At 8 rows the 8x8 inlined bodies already saturate the scheduler; the extra
++        // 4x unroll only grows live ranges and spills.
++        while (num_iters > 0) {
+             iter(temp, first_row, num_rows, col, b_qs_idx);
+             col += col_stride;
++            num_iters--;
++        }
++    } else {
++        while (num_iters >= 4) {
++            // Manually partially unroll the loop
++            [[unroll]] for (uint k = 0; k < 4; ++k) {
++                iter(temp, first_row, num_rows, col, b_qs_idx);
++                col += col_stride;
++            }
++
++            num_iters -= 4;
+         }
+ 
+-        num_iters -= 4;
+-    }
+-
+-    if (num_iters >= 2) {
+-        // Manually partially unroll the loop
+-        iter(temp, first_row, num_rows, col, b_qs_idx);
+-        col += col_stride;
+-        iter(temp, first_row, num_rows, col, b_qs_idx);
+-        col += col_stride;
+-        num_iters -= 2;
+-    }
++        if (num_iters >= 2) {
++            // Manually partially unroll the loop
++            iter(temp, first_row, num_rows, col, b_qs_idx);
++            col += col_stride;
++            iter(temp, first_row, num_rows, col, b_qs_idx);
++            col += col_stride;
++            num_iters -= 2;
++        }
+ 
+-    if (num_iters > 0) {
+-        iter(temp, first_row, num_rows, col, b_qs_idx);
++        if (num_iters > 0) {
++            iter(temp, first_row, num_rows, col, b_qs_idx);
++        }
+     }
+ 
+     reduce_result(temp, d_offset, first_row, num_rows, tid);
+diff --git a/ggml/src/ggml-vulkan/vulkan-shaders/mul_mat_vecq_funcs.glsl b/ggml/src/ggml-vulkan/vulkan-shaders/mul_mat_vecq_funcs.glsl
+index a5403ac..09256aa 100644
+--- a/ggml/src/ggml-vulkan/vulkan-shaders/mul_mat_vecq_funcs.glsl
++++ b/ggml/src/ggml-vulkan/vulkan-shaders/mul_mat_vecq_funcs.glsl
+@@ -158,37 +158,57 @@ FLOAT_TYPE mul_q8_1(const int32_t q_sum, const float da, const vec2 dsb, const i
+ #endif
+ 
+ #if defined(DATA_A_Q2_0)
+-FLOAT_TYPE mmvq_dot_product(const uint ib_a, const uint iqs) {
++struct a_tile {
++    i32vec4 qs;
++    FLOAT_TYPE dm;
++};
++
++a_tile load_a_tile(const uint ib_a, const uint iqs) {
++    return a_tile(repack4(ib_a, iqs), get_dm(ib_a));
++}
++
++FLOAT_TYPE dot_a_tile(const a_tile t) {
+     int32_t q_sum = 0;
+-    const i32vec4 qs_a = repack4(ib_a, iqs);
+-    q_sum += dotPacked4x8EXT(qs_a.x, cache_b_qs[0]);
+-    q_sum += dotPacked4x8EXT(qs_a.y, cache_b_qs[1]);
+-    q_sum += dotPacked4x8EXT(qs_a.z, cache_b_qs[2]);
+-    q_sum += dotPacked4x8EXT(qs_a.w, cache_b_qs[3]);
++    q_sum += dotPacked4x8EXT(t.qs.x, cache_b_qs[0]);
++    q_sum += dotPacked4x8EXT(t.qs.y, cache_b_qs[1]);
++    q_sum += dotPacked4x8EXT(t.qs.z, cache_b_qs[2]);
++    q_sum += dotPacked4x8EXT(t.qs.w, cache_b_qs[3]);
+ 
+     // 16 quants per call => divide sums by 32/16 = 2
+-    return mul_q8_1(q_sum, get_dm(ib_a), cache_b_ds, 2);
++    return mul_q8_1(q_sum, t.dm, cache_b_ds, 2);
+ }
+ #elif defined(DATA_A_QUANT_LEGACY) || defined(DATA_A_MXFP4)
+-FLOAT_TYPE mmvq_dot_product(const uint ib_a, const uint iqs) {
+-    int32_t q_sum = 0;
++struct a_tile {
++    int32_t qs0;
++    int32_t qs1;
++    FLOAT_TYPEV2 dm;
++};
++
++a_tile load_a_tile(const uint ib_a, const uint iqs) {
++    a_tile t;
+ #if QUANT_R == 2
+     const i32vec2 data_a_qs = repack(ib_a, iqs);
+-    q_sum += dotPacked4x8EXT(data_a_qs.x,
+-                             cache_b_qs[0]);
+-    q_sum += dotPacked4x8EXT(data_a_qs.y,
+-                             cache_b_qs[1]);
++    t.qs0 = data_a_qs.x;
++    t.qs1 = data_a_qs.y;
+ #else
+-    int32_t data_a_qs = repack(ib_a, iqs * 2);
+-    q_sum += dotPacked4x8EXT(data_a_qs,
+-                             cache_b_qs[0]);
+-    data_a_qs = repack(ib_a, iqs * 2 + 1);
+-    q_sum += dotPacked4x8EXT(data_a_qs,
+-                             cache_b_qs[1]);
++    t.qs0 = repack(ib_a, iqs * 2);
++    t.qs1 = repack(ib_a, iqs * 2 + 1);
+ #endif
++    t.dm = FLOAT_TYPEV2(get_dm(ib_a));
++    return t;
++}
++
++FLOAT_TYPE dot_a_tile(const a_tile t) {
++    int32_t q_sum = 0;
++    q_sum += dotPacked4x8EXT(t.qs0, cache_b_qs[0]);
++    q_sum += dotPacked4x8EXT(t.qs1, cache_b_qs[1]);
+ 
+     // 2 quants per call => divide sums by 8/2 = 4
+-    return mul_q8_1(q_sum, get_dm(ib_a), cache_b_ds, 4);
++#if defined(DATA_A_Q4_1) || defined(DATA_A_Q5_1)
++    return mul_q8_1(q_sum, t.dm, cache_b_ds, 4);
++#else
++    return mul_q8_1(q_sum, t.dm.x, cache_b_ds, 4);
++#endif
+ }
+ #endif
+ 
+@@ -214,28 +234,35 @@ uint8_t get_scale(uint ib, uint iqs) {
+     return data_a[ib_k].scales[iqs_k / 4];
+ }
+ 
+-FLOAT_TYPE mmvq_dot_product(const uint ib_a, const uint iqs) {
++struct a_tile {
++    i32vec4 qs;
++    int32_t scale;
++    vec2 dm;
++};
++
++a_tile load_a_tile(const uint ib_a, const uint iqs) {
++    return a_tile(repack4(ib_a, iqs * 4), int32_t(get_scale(ib_a, iqs * 4)), vec2(get_dm(ib_a)));
++}
++
++FLOAT_TYPE dot_a_tile(const a_tile t) {
+     int32_t sum_d = 0;
+     int32_t sum_m = 0;
+ 
+-    const i32vec4 qs_a = repack4(ib_a, iqs * 4);
+-    const uint8_t scale = get_scale(ib_a, iqs * 4);
+-    const vec2 dm = vec2(get_dm(ib_a));
+-    const int32_t scale_m = int32_t(scale >> 4) * 0x01010101; // Duplicate 8-bit value across 32-bits.
++    const int32_t scale_m = int32_t(t.scale >> 4) * 0x01010101; // Duplicate 8-bit value across 32-bits.
+ 
+-    sum_d += dotPacked4x8EXT(qs_a.x, cache_b_qs[0]) * (scale & 0xF);
++    sum_d += dotPacked4x8EXT(t.qs.x, cache_b_qs[0]) * (t.scale & 0xF);
+     sum_m += dotPacked4x8EXT(scale_m, cache_b_qs[0]);
+ 
+-    sum_d += dotPacked4x8EXT(qs_a.y, cache_b_qs[1]) * (scale & 0xF);
++    sum_d += dotPacked4x8EXT(t.qs.y, cache_b_qs[1]) * (t.scale & 0xF);
+     sum_m += dotPacked4x8EXT(scale_m, cache_b_qs[1]);
+ 
+-    sum_d += dotPacked4x8EXT(qs_a.z, cache_b_qs[2]) * (scale & 0xF);
++    sum_d += dotPacked4x8EXT(t.qs.z, cache_b_qs[2]) * (t.scale & 0xF);
+     sum_m += dotPacked4x8EXT(scale_m, cache_b_qs[2]);
+ 
+-    sum_d += dotPacked4x8EXT(qs_a.w, cache_b_qs[3]) * (scale & 0xF);
++    sum_d += dotPacked4x8EXT(t.qs.w, cache_b_qs[3]) * (t.scale & 0xF);
+     sum_m += dotPacked4x8EXT(scale_m, cache_b_qs[3]);
+ 
+-    return FLOAT_TYPE(float(cache_b_ds.x) * (float(dm.x) * float(sum_d) - float(dm.y) * float(sum_m)));
++    return FLOAT_TYPE(float(cache_b_ds.x) * (float(t.dm.x) * float(sum_d) - float(t.dm.y) * float(sum_m)));
+ }
+ #endif
+ 
+@@ -295,18 +322,24 @@ float get_d_scale(uint ib, uint iqs) {
+     return float(data_a[ib_k].d) * float(scale - 32);
+ }
+ 
+-FLOAT_TYPE mmvq_dot_product(const uint ib_a, const uint iqs) {
+-    int32_t q_sum = 0;
++struct a_tile {
++    i32vec4 qs;
++    float d_scale;
++};
++
++a_tile load_a_tile(const uint ib_a, const uint iqs) {
++    return a_tile(repack4(ib_a, iqs * 4), get_d_scale(ib_a, iqs * 4));
++}
+ 
+-    const i32vec4 qs_a = repack4(ib_a, iqs * 4);
+-    const float d_scale = get_d_scale(ib_a, iqs * 4);
++FLOAT_TYPE dot_a_tile(const a_tile t) {
++    int32_t q_sum = 0;
+ 
+-    q_sum += dotPacked4x8EXT(qs_a.x, cache_b_qs[0]);
+-    q_sum += dotPacked4x8EXT(qs_a.y, cache_b_qs[1]);
+-    q_sum += dotPacked4x8EXT(qs_a.z, cache_b_qs[2]);
+-    q_sum += dotPacked4x8EXT(qs_a.w, cache_b_qs[3]);
++    q_sum += dotPacked4x8EXT(t.qs.x, cache_b_qs[0]);
++    q_sum += dotPacked4x8EXT(t.qs.y, cache_b_qs[1]);
++    q_sum += dotPacked4x8EXT(t.qs.z, cache_b_qs[2]);
++    q_sum += dotPacked4x8EXT(t.qs.w, cache_b_qs[3]);
+ 
+-    return FLOAT_TYPE(float(cache_b_ds.x) * d_scale * float(q_sum));
++    return FLOAT_TYPE(float(cache_b_ds.x) * t.d_scale * float(q_sum));
+ }
+ #endif
+ 
+@@ -365,18 +398,24 @@ vec2 get_dm_scale(uint ib, uint iqs) {
+     return FLOAT_TYPEV2(data_a_packed32[ib_k].dm) * FLOAT_TYPEV2(scale_dm);
+ }
+ 
+-FLOAT_TYPE mmvq_dot_product(const uint ib_a, const uint iqs) {
+-    int32_t q_sum = 0;
++struct a_tile {
++    i32vec4 qs;
++    vec2 dm_scale;
++};
++
++a_tile load_a_tile(const uint ib_a, const uint iqs) {
++    return a_tile(repack4(ib_a, iqs * 4), get_dm_scale(ib_a, iqs * 4));
++}
+ 
+-    const i32vec4 qs_a = repack4(ib_a, iqs * 4);
+-    const vec2 dm_scale = get_dm_scale(ib_a, iqs * 4);
++FLOAT_TYPE dot_a_tile(const a_tile t) {
++    int32_t q_sum = 0;
+ 
+-    q_sum += dotPacked4x8EXT(qs_a.x, cache_b_qs[0]);
+-    q_sum += dotPacked4x8EXT(qs_a.y, cache_b_qs[1]);
+-    q_sum += dotPacked4x8EXT(qs_a.z, cache_b_qs[2]);
+-    q_sum += dotPacked4x8EXT(qs_a.w, cache_b_qs[3]);
++    q_sum += dotPacked4x8EXT(t.qs.x, cache_b_qs[0]);
++    q_sum += dotPacked4x8EXT(t.qs.y, cache_b_qs[1]);
++    q_sum += dotPacked4x8EXT(t.qs.z, cache_b_qs[2]);
++    q_sum += dotPacked4x8EXT(t.qs.w, cache_b_qs[3]);
+ 
+-    return FLOAT_TYPE(float(cache_b_ds.x) * float(dm_scale.x) * float(q_sum) - float(dm_scale.y) * float(cache_b_ds.y / 2));
++    return FLOAT_TYPE(float(cache_b_ds.x) * float(t.dm_scale.x) * float(q_sum) - float(t.dm_scale.y) * float(cache_b_ds.y / 2));
+ }
+ #endif
+ 
+@@ -433,18 +472,24 @@ float get_d_scale(uint ib, uint iqs) {
+     return float(data_a[ib_k].d) * float(data_a[ib_k].scales[iqs_k / 4]);
+ }
+ 
+-FLOAT_TYPE mmvq_dot_product(const uint ib_a, const uint iqs) {
+-    int32_t q_sum = 0;
++struct a_tile {
++    i32vec4 qs;
++    float d_scale;
++};
++
++a_tile load_a_tile(const uint ib_a, const uint iqs) {
++    return a_tile(repack4(ib_a, iqs * 4), get_d_scale(ib_a, iqs * 4));
++}
+ 
+-    const i32vec4 qs_a = repack4(ib_a, iqs * 4);
+-    const float d_scale = get_d_scale(ib_a, iqs * 4);
++FLOAT_TYPE dot_a_tile(const a_tile t) {
++    int32_t q_sum = 0;
+ 
+-    q_sum += dotPacked4x8EXT(qs_a.x, cache_b_qs[0]);
+-    q_sum += dotPacked4x8EXT(qs_a.y, cache_b_qs[1]);
+-    q_sum += dotPacked4x8EXT(qs_a.z, cache_b_qs[2]);
+-    q_sum += dotPacked4x8EXT(qs_a.w, cache_b_qs[3]);
++    q_sum += dotPacked4x8EXT(t.qs.x, cache_b_qs[0]);
++    q_sum += dotPacked4x8EXT(t.qs.y, cache_b_qs[1]);
++    q_sum += dotPacked4x8EXT(t.qs.z, cache_b_qs[2]);
++    q_sum += dotPacked4x8EXT(t.qs.w, cache_b_qs[3]);
+ 
+-    return FLOAT_TYPE(float(cache_b_ds.x) * float(d_scale) * float(q_sum));
++    return FLOAT_TYPE(float(cache_b_ds.x) * float(t.d_scale) * float(q_sum));
+ }
+ #endif
+ 
+@@ -495,33 +540,50 @@ vec2 get_dm(uint ib, uint iqs) {
+     return FLOAT_TYPEV2(dl, dl * (delta - 1));
+ }
+ 
+-FLOAT_TYPE mmvq_dot_product(const uint ib_a, const uint iqs) {
+-    int32_t q_sum = 0;
++struct a_tile {
++    i32vec4 qs0;
++    i32vec4 qs1;
++    vec2 dm;
++};
+ 
++a_tile load_a_tile(const uint ib_a, const uint iqs) {
+     const uint ib_k = ib_a / 8;
+     const uint iqs_k = (ib_a % 8) * 32 + iqs * 32;
+ 
+-    i32vec4 qs_a0;
+-    i32vec4 qs_a1;
+-    repack8(ib_k, iqs_k, qs_a0, qs_a1);
++    a_tile t;
++    repack8(ib_k, iqs_k, t.qs0, t.qs1);
++    t.dm = get_dm(ib_k, iqs_k);
++    return t;
++}
+ 
+-    const vec2 dm = get_dm(ib_k, iqs_k);
++FLOAT_TYPE dot_a_tile(const a_tile t) {
++    int32_t q_sum = 0;
+ 
+-    q_sum += dotPacked4x8EXT(qs_a0.x, cache_b_qs[0]);
+-    q_sum += dotPacked4x8EXT(qs_a0.y, cache_b_qs[1]);
+-    q_sum += dotPacked4x8EXT(qs_a0.z, cache_b_qs[2]);
+-    q_sum += dotPacked4x8EXT(qs_a0.w, cache_b_qs[3]);
+-    q_sum += dotPacked4x8EXT(qs_a1.x, cache_b_qs[4]);
+-    q_sum += dotPacked4x8EXT(qs_a1.y, cache_b_qs[5]);
+-    q_sum += dotPacked4x8EXT(qs_a1.z, cache_b_qs[6]);
+-    q_sum += dotPacked4x8EXT(qs_a1.w, cache_b_qs[7]);
++    q_sum += dotPacked4x8EXT(t.qs0.x, cache_b_qs[0]);
++    q_sum += dotPacked4x8EXT(t.qs0.y, cache_b_qs[1]);
++    q_sum += dotPacked4x8EXT(t.qs0.z, cache_b_qs[2]);
++    q_sum += dotPacked4x8EXT(t.qs0.w, cache_b_qs[3]);
++    q_sum += dotPacked4x8EXT(t.qs1.x, cache_b_qs[4]);
++    q_sum += dotPacked4x8EXT(t.qs1.y, cache_b_qs[5]);
++    q_sum += dotPacked4x8EXT(t.qs1.z, cache_b_qs[6]);
++    q_sum += dotPacked4x8EXT(t.qs1.w, cache_b_qs[7]);
+ 
+-    return FLOAT_TYPE(float(cache_b_ds.x) * float(dm.x) * float(q_sum) + float(dm.y) * float(cache_b_ds.y));
++    return FLOAT_TYPE(float(cache_b_ds.x) * float(t.dm.x) * float(q_sum) + float(t.dm.y) * float(cache_b_ds.y));
+ }
+ #endif
+ 
+ #if defined(DATA_A_IQ1_M)
+-FLOAT_TYPE mmvq_dot_product(const uint ib_a, const uint iqs) {
++struct a_tile {
++    float dl0;
++    float dl1;
++    int32_t grid0;
++    int32_t grid1;
++    int32_t grid2;
++    int32_t grid3;
++    uint qh16;
++};
++
++a_tile load_a_tile(const uint ib_a, const uint iqs) {
+     const uint ib_k = ib_a / 8;
+     const uint iqs_k = (ib_a % 8) * 32 + iqs * 32;
+ 
+@@ -534,17 +596,25 @@ FLOAT_TYPE mmvq_dot_product(const uint ib_a, const uint iqs) {
+ 
+     const uint qs32 = data_a_packed32[ib_k].qs[ib32];
+     const uint qh16 = data_a_packed16[ib_k].qh[ib32];
++    const uint sc = data_a[ib_k].scales[ib64];
+ 
++    a_tile t;
++    t.dl0 = d * (2 * bitfieldExtract(sc, 3 * int((2 * ib32) & 3), 3) + 1);
++    t.dl1 = d * (2 * bitfieldExtract(sc, 3 * int((2 * ib32 + 1) & 3), 3) + 1);
++    t.qh16 = qh16;
++    t.grid0 = int32_t(iq1s_grid_gpu[(qs32 & 0xFF) | ((qh16 & 7) << 8)]);
++    t.grid1 = int32_t(iq1s_grid_gpu[((qs32 >> 8) & 0xFF) | (((qh16 >> 4) & 7) << 8)]);
++    t.grid2 = int32_t(iq1s_grid_gpu[((qs32 >> 16) & 0xFF) | (((qh16 >> 8) & 7) << 8)]);
++    t.grid3 = int32_t(iq1s_grid_gpu[((qs32 >> 24) & 0xFF) | (((qh16 >> 12) & 7) << 8)]);
++    return t;
++}
++
++FLOAT_TYPE dot_a_tile(const a_tile t) {
+     float sum = 0;
+-    const uint sc = data_a[ib_k].scales[ib64];
+     [[unroll]] for (int l = 0; l < 4; ++l) {
+-        const uint ib16 = 2 * ib32 + l / 2;
+-        const float dl = d * (2 * bitfieldExtract(sc, 3 * int(ib16 & 3), 3) + 1);
+-        const uint qh = qh16 >> (4 * l);
+-        const uint qs = (qs32 >> (8 * l)) & 0xFF;
+-        const float delta = ((qh & 8) != 0) ? -IQ1M_DELTA : IQ1M_DELTA;
+-
+-        const int32_t grid = int32_t(iq1s_grid_gpu[qs | ((qh & 7) << 8)]);
++        const float dl = (l < 2) ? t.dl0 : t.dl1;
++        const int32_t grid = (l == 0) ? t.grid0 : (l == 1) ? t.grid1 : (l == 2) ? t.grid2 : t.grid3;
++        const float delta = (((t.qh16 >> (4 * l)) & 8) != 0) ? -IQ1M_DELTA : IQ1M_DELTA;
+ 
+         int32_t q_sum = 0;
+         q_sum += dotPacked4x8EXT((grid >> 0) & 0x0F0F0F0F, cache_b_qs[2 * l + 0]);
