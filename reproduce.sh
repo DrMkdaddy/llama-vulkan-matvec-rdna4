@@ -32,11 +32,14 @@ cmake -S "$SRC" -B "$SRC/build" \
 cmake --build "$SRC/build" --config Release -j"$(nproc)" \
   --target llama-server llama-bench
 
+# Stable path for the commands below and in the README.
+ln -sfn "$SRC/build" "$ROOT/build"
+
 cat <<EOF
 
 Built:
-  $SRC/build/bin/llama-server
-  $SRC/build/bin/llama-bench
+  $ROOT/build/bin/llama-server
+  $ROOT/build/bin/llama-bench
 
 Serve:
   $SRC/build/bin/llama-server \\

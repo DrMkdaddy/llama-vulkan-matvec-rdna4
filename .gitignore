@@ -1,5 +1,7 @@
 work/
 build/
+bwtest
+q4k_pattern
 *.o
 *.so
 *.gguf
