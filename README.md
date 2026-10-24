@@ -18,6 +18,10 @@ with an f16 KV cache:
 (117.4 vs 117.6 tok/s), and eight concurrent greedy requests produce
 byte-identical output before and after.
 
+Upstream PR (Phase 1 dequant hoist): [ggml-org/llama.cpp#31022](https://github.com/ggml-org/llama.cpp/pull/31022)
+
+![Kernel Performance Comparison: Stock vs. Optimized](docs/kernel_comparison_stock_vs_optimized.png)
+
 ## The problem
 
 At batch 1, decode is a weight-bandwidth problem: every step reads every
