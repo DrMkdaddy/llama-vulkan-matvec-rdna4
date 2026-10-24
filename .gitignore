@@ -5,3 +5,6 @@ q4k_pattern
 *.o
 *.so
 *.gguf
+traces/
+*.rgp
+
