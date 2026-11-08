@@ -43,6 +43,21 @@ The first is the simpler win. The second is what pushes the aggregate past
 460, and it also exposes the next limit: the LM head is activation-bound and
 needs shared-memory staging rather than a wider row block.
 
+```mermaid
+flowchart TB
+    subgraph stock["stock: dequant per row, per column"]
+        A1["for each output row"] --> A2["for each of 8 token columns"]
+        A2 --> A3["re-read and unpack the same K-quant block"]
+        A3 --> A4["dot with repeated activation read"]
+    end
+    subgraph patched["patched: unpack once per row"]
+        B1["for each output row"] --> B2["load_a_tile:<br/>unpack the block once"]
+        B2 --> B3["for each of 8 token columns"]
+        B3 --> B4["dot_a_tile:<br/>cached activation"]
+    end
+```
+
+
 ## What the patch changes
 
 Three files, +192/−104 lines, against llama.cpp b11050 (`60b06ab`).
