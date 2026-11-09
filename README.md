@@ -1,8 +1,7 @@
 # llama.cpp Vulkan matvec: dequant hoisting + 8-row blocking
 
-A patch to llama.cpp's Vulkan `mul_mat_vecq` shader that recovers most of the
-multi-slot throughput lost to redundant K-quant dequantization and activation
-reads.
+A patch to llama.cpp's Vulkan `mul_mat_vecq` shader. It removes redundant
+K-quant dequantization and activation reads at multiple slots.
 
 Measured on one AMD RX 9070 XT (RDNA4, gfx1201) serving
 DeepSeek-R1-Distill-Qwen-7B Q4_K_M to eight concurrent slots at 32k context
@@ -22,7 +21,7 @@ Upstream PR (Phase 1 dequant hoist): [ggml-org/llama.cpp#31022](https://github.c
 
 ![Kernel Performance Comparison: Stock vs. Optimized](docs/kernel_comparison_stock_vs_optimized.png)
 
-## The problem
+## Redundant work at np=8
 
 At batch 1, decode is a weight-bandwidth problem: every step reads every
 weight once, and the stock Vulkan kernels already run within about 11% of this
@@ -39,9 +38,9 @@ At np=8 the shape changes, and two redundancies appear in `mul_mat_vecq`:
    rows and re-read the whole activation slice for them. Widening the block to
    eight halves the activation bytes per output row.
 
-The first is the simpler win. The second is what pushes the aggregate past
-460, and it also exposes the next limit: the LM head is activation-bound and
-needs shared-memory staging rather than a wider row block.
+The first change accounts for most of the gain; the second raises aggregate to
+495 tok/s and exposes the next limit: the LM head is activation-bound and needs
+shared-memory staging rather than a wider row block.
 
 ```mermaid
 flowchart TB
@@ -56,7 +55,6 @@ flowchart TB
         B3 --> B4["dot_a_tile:<br/>cached activation"]
     end
 ```
-
 
 ## What the patch changes
 
@@ -104,10 +102,10 @@ runs, medians, at 32k context with an f16 KV cache. Per-op timings come from
 | q4_K FFN down, m=3584 | 74.8 µs | 75.0 µs | 80.5 µs | weight-bound; +7.3% |
 | q6_K LM head, m=152064 | 1320.9 µs | 1352.4 µs | 1348.0 µs | activation-bound; unchanged |
 
-The wider block wins where activation traffic is the limiter and is
-neutral-to-slightly-negative where the weight stream dominates. Gate/up is
-about 35% of the step, which is why the aggregate still improves despite the
-q4_K FFN-down regression.
+The wider block helps when activation traffic is the limiter and is
+neutral-to-slightly-negative when the weight stream dominates. Gate/up is about
+35% of the step, which is why the aggregate still improves despite the q4_K
+FFN-down regression.
 
 ## Correctness
 
@@ -151,18 +149,18 @@ hipcc -O3 --offload-arch=gfx1201 bench/gpu/q4k_pattern.cpp -o q4k_pattern
 ## Scope and caveats
 
 - **One GPU, one stack, one model.** RX 9070 XT, RADV/Vulkan, 7B Q4_K_M,
-  np=8. Treat the percentage as a case study, not a universal constant.
-- **Throughput, not latency.** Single stream takes the `NUM_ROWS < 8` path and
-  is unchanged by design. Speculative decoding was measured separately on this
-  card and lost; this patch is for concurrent serving.
+  np=8. This is a single-card result; do not assume the same percentage
+  elsewhere.
+- **Throughput, not latency.** Single-stream throughput is unchanged by design
+  (117.4 vs 117.6 tok/s). This patch targets concurrent serving.
 - **Not upstreamed.** It is a patch against b11050 (`60b06ab`), not a fork.
   llama.cpp moves quickly, so a newer build will need a rebase.
 - **Architecture guard.** The wide-row path reuses the `AMD_RDNA3`
   classification, which includes gfx1201 on this build. Verify the mapping
   before porting to another architecture.
-- **The next limit is activation traffic.** The LM head re-reads about 1.09 GB
-  of activations per step; sharing one activation slice across columns in
-  shared memory measured up to 24% faster on that op alone.
+- **Next limit: activation traffic.** The LM head re-reads about 1.09 GB of
+  activations per step; sharing one activation slice across columns in shared
+  memory measured up to 24% faster on that op alone.
 
 ## Repo layout
 
@@ -174,8 +172,7 @@ results/        raw per-op tables, PPL, and the correctness outputs
 reproduce.sh    clone, patch, and build
 ```
 
-The longer write-up, including what did not work (IQ4_XS, speculative
-decoding, activation staging), is in
+Negative results (IQ4_XS, speculative decoding, activation staging) are in
 [`docs/perf-analysis.md`](docs/perf-analysis.md).
 
 ## License
