@@ -38,9 +38,10 @@ At np=8 the shape changes, and two redundancies appear in `mul_mat_vecq`:
    rows and re-read the whole activation slice for them. Widening the block to
    eight halves the activation bytes per output row.
 
-The first change accounts for most of the gain; the second raises aggregate to
-495 tok/s and exposes the next limit: the LM head is activation-bound and needs
-shared-memory staging rather than a wider row block.
+The first change is smaller and simpler. The second adds more throughput,
+raising aggregate to 495 tok/s, and exposes the next limit: the LM head is
+activation-bound and needs shared-memory staging rather than a wider row
+block.
 
 ```mermaid
 flowchart TB
